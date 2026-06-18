@@ -1,0 +1,8 @@
+PyMuPDF>=1.24.0
+faiss-cpu>=1.8.0
+rank-bm25>=0.2.2
+openai>=1.30.0
+langchain-text-splitters>=0.2.0
+numpy>=1.24.0
+pyyaml>=6.0
+volcengine-python-sdk>=1.0.0

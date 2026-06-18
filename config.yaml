@@ -1,0 +1,27 @@
+# PDF-RAG 配置文件
+
+llm:
+  provider: "deepseek"                                 # LLM 提供商（OpenAI 兼容接口）
+  api_key: "sk-1e8aa23033524e8881f6ef92eef30b68"       # DeepSeek API Key
+  base_url: "https://api.deepseek.com"                 # API 端点
+  model: "deepseek-v4-flash"                           # 对话模型
+
+embedding:
+  provider: "volcengine"                               # 向量嵌入提供商
+  api_key: "ark-4eb501f9-e609-4934-9664-d1b570e2abb0-5149c"  # 火山引擎 Ark API Key
+  model: "doubao-embedding-vision-251215"              # 嵌入模型
+  dimension: 2048                                      # 向量维度
+
+pdf:
+  chunk_size: 500                     # 文本分块大小（字符数）
+  chunk_overlap: 100                  # 分块重叠大小
+
+retrieval:
+  embedding_top_k: 10                 # 向量检索返回数量
+  bm25_top_k: 10                      # BM25检索返回数量
+  final_top_k: 5                      # RRF融合后最终返回数量
+
+index:
+  faiss_index_path: "./index/faiss"   # FAISS索引保存路径
+  bm25_index_path: "./index/bm25.pkl" # BM25索引保存路径
+  chunk_store_path: "./index/chunks.json"  # 文本块保存路径
