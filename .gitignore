@@ -1,4 +1,12 @@
 index/
+chunks/
 pdf/
+chunks_output/
+output_chunks/
+output_chunks.json
 __pycache__/
 *.pyc
+.claude/
+config.yaml
+api.md
+task.md

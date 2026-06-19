@@ -1,9 +1,11 @@
-"""PDF-RAG 入口脚本。支持构建索引和问答两种模式。
+"""PDF-RAG 入口脚本。支持构建索引、列表、删除和问答。
 
 用法:
-  python main.py index <pdf_path>           # 构建索引
-  python main.py query "<问题>"             # 问答
-  python main.py interactive                # 交互式问答
+  python main.py index <pdf_path>           # 添加文章到索引
+  python main.py list                        # 列出已索引文章
+  python main.py delete <article_name>       # 删除某文章
+  python main.py query "<问题>"              # 跨文章问答
+  python main.py interactive                 # 交互式跨文章问答
 """
 import sys
 import yaml
@@ -22,19 +24,57 @@ def cmd_index(pipeline: RAGPipeline, pdf_path: str):
     pipeline.save_index()
 
 
+def cmd_list(pipeline: RAGPipeline):
+    """列出已索引文章。"""
+    articles = pipeline.list_articles()
+    if not articles:
+        print("暂无已索引的文章")
+    else:
+        print("已索引文章:")
+        for name in articles:
+            print(f"  - {name}")
+
+
+def cmd_delete(pipeline: RAGPipeline, article_name: str):
+    """删除某文章索引。"""
+    articles = pipeline.list_articles()
+    if not articles:
+        print("暂无已索引的文章")
+        return
+
+    if article_name == "--select":
+        print("选择要删除的文章:")
+        for i, name in enumerate(articles):
+            print(f"  [{i}] {name}")
+        while True:
+            try:
+                choice = input("请选择序号: ").strip()
+                article_name = articles[int(choice)]
+                break
+            except (ValueError, IndexError):
+                print(f"无效序号，请输入 0-{len(articles)-1}")
+    elif article_name not in articles:
+        print(f"文章 '{article_name}' 不在索引列表中。可用文章: {articles}")
+        return
+
+    pipeline.delete_article(article_name)
+
+
 def cmd_query(pipeline: RAGPipeline, question: str):
     """单次查询命令。"""
     pipeline.load_index()
-    answer = pipeline.query(question)
+    answer, sources = pipeline.query(question)
+
     print(f"\n{'='*60}")
     print(f"回答:\n{answer}")
+    _print_sources(sources)
     print(f"{'='*60}")
 
 
 def cmd_interactive(pipeline: RAGPipeline):
     """交互式问答命令。"""
     pipeline.load_index()
-    print("\n交互式问答模式（输入 'quit' 退出）\n")
+    print("\n交互式问答模式 | 输入 'quit' 退出\n")
 
     while True:
         try:
@@ -46,13 +86,32 @@ def cmd_interactive(pipeline: RAGPipeline):
                 continue
 
             print()
-            answer = pipeline.query(question)
-            print(f"\n回答:\n{answer}\n")
+            answer, sources = pipeline.query(question)
+            print(f"\n回答:\n{answer}")
+            _print_sources(sources)
+            print()
             print("-" * 60)
 
         except KeyboardInterrupt:
             print("\n再见！")
             break
+
+
+def _print_sources(sources: list[dict]):
+    """打印引用来源。"""
+    if not sources:
+        return
+    # 按文章分组
+    by_article: dict[str, list[dict]] = {}
+    for s in sources:
+        by_article.setdefault(s["article"], []).append(s)
+
+    print(f"\n引用来源 ({len(sources)} 个块):")
+    for article, items in by_article.items():
+        sections = ", ".join(f"块[{it['index']}] {it['section']}" for it in items)
+        print(f"[{article}]")
+        for it in items:
+            print(f"块[{it['index']:>3}] → {it['section']}")
 
 
 def main():
@@ -61,7 +120,6 @@ def main():
         sys.exit(1)
 
     config = load_config()
-    pipeline = RAGPipeline(config)
 
     command = sys.argv[1]
 
@@ -69,17 +127,27 @@ def main():
         if len(sys.argv) < 3:
             print("用法: python main.py index <pdf_path>")
             sys.exit(1)
-        pdf_path = sys.argv[2]
-        cmd_index(pipeline, pdf_path)
+        pipeline = RAGPipeline(config)
+        cmd_index(pipeline, sys.argv[2])
+
+    elif command == "list":
+        pipeline = RAGPipeline(config)
+        cmd_list(pipeline)
+
+    elif command == "delete":
+        article_name = sys.argv[2] if len(sys.argv) > 2 else "--select"
+        pipeline = RAGPipeline(config)
+        cmd_delete(pipeline, article_name)
 
     elif command == "query":
         if len(sys.argv) < 3:
             print('用法: python main.py query "<问题>"')
             sys.exit(1)
-        question = sys.argv[2]
-        cmd_query(pipeline, question)
+        pipeline = RAGPipeline(config)
+        cmd_query(pipeline, sys.argv[2])
 
     elif command == "interactive":
+        pipeline = RAGPipeline(config)
         cmd_interactive(pipeline)
 
     else:

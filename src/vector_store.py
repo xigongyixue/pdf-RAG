@@ -4,7 +4,6 @@ import json
 import faiss
 import numpy as np
 
-
 class FAISSVectorStore:
     """基于 FAISS 的向量存储，支持保存和加载。"""
 

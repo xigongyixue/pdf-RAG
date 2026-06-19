@@ -1,116 +1,84 @@
-"""PDF-RAG 测试脚本。"""
+"""PDF-RAG 测试脚本：分块效果验证（不涉及 embedding API）。"""
+import json
 import os
-import tempfile
-import unittest
-
 import yaml
 
 from src.pdf_parser import extract_text
 from src.chunker import split_text
-from src.hybrid_search import HybridSearch
 
 
-class TestPDFParser(unittest.TestCase):
-    """测试 PDF 解析。"""
-
-    def test_extract_text_empty(self):
-        """测试不存在的文件抛出异常。"""
-        with self.assertRaises(Exception):
-            extract_text("nonexistent.pdf")
+CHUNKS_OUTPUT_DIR = "chunks_output"
 
 
-class TestChunker(unittest.TestCase):
-    """测试文本分块。"""
+def test_chunking(pdf_path: str):
+    """对 PDF 进行分块，存入 chunks_output/<文件名>_chunks.json，并展示切割效果。"""
+    print("=" * 70)
+    print(f"PDF: {pdf_path}")
+    print("=" * 70)
 
-    def test_split_text_basic(self):
-        """测试基本分块。"""
-        text = "Hello world. " * 200
-        chunks = split_text(text, chunk_size=100, chunk_overlap=20)
-        self.assertGreater(len(chunks), 0)
-        for chunk in chunks:
-            self.assertIn("index", chunk)
-            self.assertIn("content", chunk)
-            self.assertLessEqual(len(chunk["content"]), 200)  # 允许一定超量
+    text = extract_text(pdf_path)
+    chunks = split_text(text)
 
-    def test_split_text_overlap(self):
-        """测试重叠分块。"""
-        text = "Sentence one. Sentence two. Sentence three. Sentence four. Sentence five."
-        chunks = split_text(text, chunk_size=30, chunk_overlap=10)
-        if len(chunks) >= 2:
-            c1, c2 = chunks[0]["content"], chunks[1]["content"]
-            # 检查是否有重叠
-            overlap_found = any(
-                c1[i : i + 10] in c2 for i in range(0, len(c1) - 10, 5)
-            )
-            self.assertTrue(overlap_found or len(chunks) > 1)
+    print(f"\n总文本长度: {len(text)} 字符")
+    print(f"分块数量:   {len(chunks)}\n")
 
-    def test_empty_text(self):
-        """测试空文本。"""
-        chunks = split_text("")
-        self.assertEqual(len(chunks), 0)
+    for c in chunks:
+        content_len = len(c["content"])
+        print(f"[{c['index']:>3}] {c['section']}  ({content_len} 字符)")
 
-    def test_short_text(self):
-        """测试短文本不分块。"""
-        short = "This is a short sentence."
-        chunks = split_text(short, chunk_size=500, chunk_overlap=100)
-        self.assertEqual(len(chunks), 1)
-        self.assertEqual(chunks[0]["content"], short)
+    # 输出目录 + 文件名：以 PDF 文件名为前缀
+    os.makedirs(CHUNKS_OUTPUT_DIR, exist_ok=True)
+    pdf_basename = os.path.splitext(os.path.basename(pdf_path))[0]
+    safe_name = pdf_basename.replace(" ", "_")
+    output_file = os.path.join(CHUNKS_OUTPUT_DIR, f"{safe_name}_chunks.json")
 
-
-class TestHybridSearch(unittest.TestCase):
-    """测试混合检索 RRF 融合（离线单元测试）。"""
-
-    def test_rrf_merge(self):
-        """测试 RRF 融合逻辑。"""
-        # 模拟两种检索结果
-        vec_indices = [0, 1, 2]
-        bm25_indices = [1, 3, 0]
-
-        rrf_scores = {}
-        k = 60
-        for rank, idx in enumerate(vec_indices):
-            rrf_scores[idx] = rrf_scores.get(idx, 0) + 1.0 / (k + rank + 1)
-        for rank, idx in enumerate(bm25_indices):
-            rrf_scores[idx] = rrf_scores.get(idx, 0) + 1.0 / (k + rank + 1)
-
-        # 索引1同时出现在两个结果中，应该有更高的RRF分数
-        self.assertGreater(rrf_scores[1], rrf_scores[2])
-        self.assertGreater(rrf_scores[1], rrf_scores[3])
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(chunks, f, ensure_ascii=False, indent=2)
+    print(f"\n所有分块已保存到 {output_file}")
 
 
 def check_config():
-    """检查配置文件是否已填写。"""
-    if not os.path.exists("config.yaml"):
-        print("[FAIL] config.yaml 不存在")
-        return False
-
-    with open("config.yaml", "r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
-
-    api_key = config.get("llm", {}).get("api_key", "")
-    if not api_key:
-        print("[WARN] config.yaml 中的 llm.api_key 尚未填写，跳过 API 相关测试")
-        return False
-
-    return True
+    """检查配置文件是否存在。"""
+    try:
+        with open("config.yaml", "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        print(f"LLM:      {config['llm']['provider']} / {config['llm']['model']}")
+        print(f"Embedding: {config['embedding']['provider']} / {config['embedding']['model']} ({config['embedding']['dimension']}维)")
+        print("[OK] config.yaml 已就绪")
+    except Exception as e:
+        print(f"[WARN] config.yaml: {e}")
 
 
 if __name__ == "__main__":
-    # 先运行离线单元测试
-    print("=" * 60)
-    print("运行离线单元测试...")
-    print("=" * 60)
+    import sys
 
-    suite = unittest.TestLoader().loadTestsFromModule(__import__(__name__))
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
+    print("=" * 70)
+    print("PDF-RAG 分块测试")
+    print("=" * 70)
+    check_config()
 
-    # 检查配置
-    print("\n" + "=" * 60)
-    print("检查配置...")
-    print("=" * 60)
-    has_config = check_config()
-    if has_config:
-        print("[OK] 配置文件已就绪，可运行 API 相关测试")
+    # 支持命令行指定文件: python test.py path/to/file.pdf
+    if len(sys.argv) > 1:
+        pdf_path = sys.argv[1]
+        if not os.path.isfile(pdf_path):
+            print(f"\n[ERROR] 文件不存在: {pdf_path}")
+            sys.exit(1)
+        if not pdf_path.endswith(".pdf"):
+            print(f"\n[ERROR] 不是 PDF 文件: {pdf_path}")
+            sys.exit(1)
+        print()
+        test_chunking(pdf_path)
+        sys.exit(0)
+
+    # 未指定文件时，自动从 pdf/ 目录查找
+    pdf_dir = "pdf"
+    if os.path.isdir(pdf_dir):
+        pdfs = [f for f in os.listdir(pdf_dir) if f.endswith(".pdf")]
+        if pdfs:
+            pdf_path = os.path.join(pdf_dir, pdfs[0])
+            print()
+            test_chunking(pdf_path)
+        else:
+            print("\n[INFO] pdf/ 目录下无 PDF 文件")
     else:
-        print("[INFO] 请先填写 config.yaml 中的 api_key，然后使用 main.py 进行集成测试")
+        print("\n[INFO] pdf/ 目录不存在，请放入 PDF 文件后重试")

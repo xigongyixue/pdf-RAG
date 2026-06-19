@@ -1,15 +1,23 @@
 #!/bin/bash
 # PDF-RAG 使用说明
 
-# 1. 安装依赖
+# 安装依赖
 pip install -r requirements.txt
 
-# 2. 构建索引（替换为你的PDF路径）
+# 添加文章到索引
 python main.py index /path/to/your.pdf
 
-# 3. 问答模式
-# 3.1 单次查询
-python main.py query "这篇文档的主要内容是什么？"
+# 列出已索引文章
+python main.py list
 
-# 3.2 交互式问答
+# 删除某文章
+python main.py delete <article_name>
+
+# 跨文章问答（无需指定文章名）
+python main.py query "你的问题"
+
+# 交互式跨文章问答
 python main.py interactive
+
+# 测试分块效果
+python test.py /path/to/any.pdf
