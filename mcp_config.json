@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "pdf-rag": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "cwd": "e:/Project/pdf-RAG"
+    }
+  }
+}
