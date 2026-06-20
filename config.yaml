@@ -12,16 +12,11 @@ embedding:
   model: "doubao-embedding-vision-251215"              # 嵌入模型
   dimension: 2048                                      # 向量维度
 
-pdf:
-  chunk_size: 500                     # 文本分块大小（字符数）
-  chunk_overlap: 100                  # 分块重叠大小
-
 retrieval:
   embedding_top_k: 10                 # 向量检索返回数量
   bm25_top_k: 10                      # BM25检索返回数量
   final_top_k: 5                      # RRF融合后最终返回数量
 
 index:
-  faiss_index_path: "./index/faiss"   # FAISS索引保存路径
-  bm25_index_path: "./index/bm25.pkl" # BM25索引保存路径
-  chunk_store_path: "./index/chunks.json"  # 文本块保存路径
+  index_dir: "./index"               # 索引根目录（FAISS/BM25/meta.json）
+  chunks_dir: "./chunks"             # 分块存储目录（独立 chunk json）
