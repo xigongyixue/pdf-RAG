@@ -98,7 +98,7 @@ def cmd_interactive(pipeline: RAGPipeline):
 
 
 def _print_sources(sources: list[dict], preview_chars: int = 200):
-    """打印引用来源（含 chunk 内容预览）。"""
+    """打印引用来源（仅块ID和相关性分数）。"""
     if not sources:
         return
     by_article: dict[str, list[dict]] = {}
@@ -109,11 +109,8 @@ def _print_sources(sources: list[dict], preview_chars: int = 200):
     for article, items in by_article.items():
         print(f"[{article}]")
         for it in items:
-            content = (it.get("content") or "").strip().replace("\n", " ")
-            if len(content) > preview_chars:
-                content = content[:preview_chars] + "..."
-            print(f"块[{it['index']:>3}] → {it['section']}")
-            print(f"  {content}")
+            score = it.get("score", 0.0)
+            print(f"  块[{it['index']:>3}] → 相关性分数: {score:.4f}")
 
 
 def main():

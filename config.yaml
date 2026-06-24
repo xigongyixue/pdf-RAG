@@ -22,3 +22,11 @@ retrieval:
 index:
   index_dir: "./index"               # 索引根目录（FAISS/BM25/meta.json）
   chunks_dir: "./chunks"             # 分块存储目录（独立 chunk json）
+
+database:
+  host: "localhost"                  # MySQL 主机地址
+  port: 3306                         # MySQL 端口
+  user: "root"                       # MySQL 用户名
+  password: "123"                       # MySQL 密码
+  database: "pdf_rag"                # 数据库名称
+  charset: "utf8mb4"                 # 字符集

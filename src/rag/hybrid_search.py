@@ -5,8 +5,8 @@ def rrf_fuse(
     rankings: list[list[int]],
     final_top_k: int,
     rrf_k: int = 60,
-) -> list[int]:
-    """对多路检索的索引排名做 RRF 融合，返回前 final_top_k 个全局索引。
+) -> list[tuple[int, float]]:
+    """对多路检索的索引排名做 RRF 融合，返回前 final_top_k 个全局索引及其分数。
 
     Args:
         rankings: 每路检索的索引列表（已按相关性降序）
@@ -14,7 +14,7 @@ def rrf_fuse(
         rrf_k: RRF 平滑参数
 
     Returns:
-        按 RRF 分数降序的索引列表
+        按 RRF 分数降序的 (索引, 分数) 列表
     """
     scores: dict[int, float] = {}
     for ranking in rankings:
@@ -24,4 +24,4 @@ def rrf_fuse(
             scores[int(idx)] = scores.get(int(idx), 0.0) + 1.0 / (rrf_k + rank + 1)
 
     sorted_items = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    return [idx for idx, _ in sorted_items[:final_top_k]]
+    return sorted_items[:final_top_k]

@@ -52,8 +52,8 @@ class DualIndex:
         embedding_top_k: int = 10,
         bm25_top_k: int = 10,
         final_top_k: int = 5,
-    ) -> list[int]:
-        """对单条查询做向量+BM25 混合检索，RRF 融合排序后返回索引。"""
+    ) -> list[tuple[int, float]]:
+        """对单条查询做向量+BM25 混合检索，RRF 融合排序后返回索引和分数。"""
         if self.size == 0:
             return []
 
