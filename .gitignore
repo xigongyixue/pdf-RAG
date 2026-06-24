@@ -1,6 +1,7 @@
 index/
 chunks/
 pdf/
+papers/
 chunks_output/
 output_chunks/
 output_chunks.json
@@ -10,3 +11,5 @@ __pycache__/
 config.yaml
 api.md
 task.md
+*.txt
+*.pdf

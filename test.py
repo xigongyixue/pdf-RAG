@@ -3,8 +3,8 @@ import json
 import os
 import yaml
 
-from src.pdf_parser import extract_text
-from src.chunker import split_text
+from src.common.pdf_parser import extract_text
+from src.rag.chunker import split_text
 
 
 CHUNKS_OUTPUT_DIR = "chunks_output"

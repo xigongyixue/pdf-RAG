@@ -7,7 +7,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-from src.rag_pipeline import RAGPipeline
+from src.rag.rag_pipeline import RAGPipeline
 
 # 全局 pipeline 实例（懒加载）
 _pipeline: RAGPipeline | None = None
@@ -126,27 +126,24 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         try:
             answer, sources = pipeline.query(question)
 
-            # 构建结构化来源
-            source_lines = [f"# 回答\n\n{answer}\n\n# 引用来源"]
+            lines = [f"# 回答\n\n{answer}\n\n# 引用来源"]
             by_article: dict[str, list[dict]] = {}
             for s in sources:
                 by_article.setdefault(s["article"], []).append(s)
 
             for article, items in by_article.items():
-                source_lines.append(f"\n## {article}")
+                lines.append(f"\n## {article}")
                 for it in items:
-                    source_lines.append(
-                        f"- 块[{it['index']}] → {it['section']}"
-                    )
+                    lines.append(f"- 块[{it['index']}] → {it['section']}")
 
-            # 附加 chunk 内容的简短摘要
-            source_lines.append("\n# 引用的相关块内容片段")
+            lines.append("\n# 引用的文档切块")
             for s in sources:
-                source_lines.append(
-                    f"\n--- 块[{s['index']}] {s['section']} ---"
+                lines.append(
+                    f"\n--- 块[{s['index']}] <{s['article']}> {s['section']} ---"
                 )
+                lines.append(s.get("content", ""))
 
-            return [TextContent(type="text", text="\n".join(source_lines))]
+            return [TextContent(type="text", text="\n".join(lines))]
         except Exception as e:
             return [TextContent(type="text", text=f"查询失败: {e}")]
 

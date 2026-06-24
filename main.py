@@ -10,7 +10,7 @@
 import sys
 import yaml
 
-from src.rag_pipeline import RAGPipeline
+from src.rag.rag_pipeline import RAGPipeline
 
 
 def load_config(path: str = "config.yaml") -> dict:
@@ -97,21 +97,23 @@ def cmd_interactive(pipeline: RAGPipeline):
             break
 
 
-def _print_sources(sources: list[dict]):
-    """打印引用来源。"""
+def _print_sources(sources: list[dict], preview_chars: int = 200):
+    """打印引用来源（含 chunk 内容预览）。"""
     if not sources:
         return
-    # 按文章分组
     by_article: dict[str, list[dict]] = {}
     for s in sources:
         by_article.setdefault(s["article"], []).append(s)
 
     print(f"\n引用来源 ({len(sources)} 个块):")
     for article, items in by_article.items():
-        sections = ", ".join(f"块[{it['index']}] {it['section']}" for it in items)
         print(f"[{article}]")
         for it in items:
+            content = (it.get("content") or "").strip().replace("\n", " ")
+            if len(content) > preview_chars:
+                content = content[:preview_chars] + "..."
             print(f"块[{it['index']:>3}] → {it['section']}")
+            print(f"  {content}")
 
 
 def main():

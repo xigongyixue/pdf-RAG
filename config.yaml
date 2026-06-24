@@ -9,13 +9,15 @@ llm:
 embedding:
   provider: "volcengine"                               # 向量嵌入提供商
   api_key: "ark-4eb501f9-e609-4934-9664-d1b570e2abb0-5149c"  # 火山引擎 Ark API Key
-  model: "doubao-embedding-vision-251215"              # 嵌入模型
+  model: "doubao-embedding-vision"              # 嵌入模型
+  base_url: "https://ark.cn-beijing.volces.com/api/coding/v3"
   dimension: 2048                                      # 向量维度
 
 retrieval:
-  embedding_top_k: 10                 # 向量检索返回数量
-  bm25_top_k: 10                      # BM25检索返回数量
-  final_top_k: 5                      # RRF融合后最终返回数量
+  embedding_top_k: 20                 # 向量检索返回数量
+  bm25_top_k: 20                      # BM25检索返回数量
+  final_top_k: 10                      # RRF融合后最终返回数量
+  article_top_k: 5                    # ABSTRACT_FIRST 策略中先锁定多少篇文章
 
 index:
   index_dir: "./index"               # 索引根目录（FAISS/BM25/meta.json）
