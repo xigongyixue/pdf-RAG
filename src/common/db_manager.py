@@ -37,7 +37,7 @@ class DatabaseManager:
             self.connection.select_db(self.database)
             # 创建表（如果不存在）
             self._create_tables_if_not_exists()
-            print(f"已连接到MySQL数据库: {self.database}")
+            # print(f"已连接到MySQL数据库: {self.database}")
         except Exception as e:
             raise Exception(f"数据库连接失败: {e}")
 
@@ -120,7 +120,7 @@ class DatabaseManager:
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """)
 
-    # ─── 文章操作 ────────────────────────────────────────
+    # ─── 文章操作 ────────────────────────────
     def add_article(self, name: str, chunks_file: str = None, 
                    abstract_file: str = None, chunk_count: int = 0,
                    chunk_start: int = 0, chunk_end: int = 0) -> int:
@@ -157,6 +157,12 @@ class DatabaseManager:
             cursor.execute("DELETE FROM articles WHERE name = %s", (name,))
             return cursor.rowcount > 0
 
+    def delete_all_articles(self) -> int:
+        """删除所有文章（级联删除所有摘要和块）。"""
+        with self.get_cursor() as cursor:
+            cursor.execute("DELETE FROM articles")
+            return cursor.rowcount
+
     def update_article_chunk_range(self, name: str, chunk_start: int, chunk_end: int, chunk_count: int):
         """更新文章的块范围和数量。"""
         with self.get_cursor() as cursor:
@@ -166,7 +172,7 @@ class DatabaseManager:
                 WHERE name = %s
             """, (chunk_start, chunk_end, chunk_count, name))
 
-    # ─── 摘要操作 ────────────────────────────────────────
+    # ─── 摘要操作 ────────────────────────────
     def add_or_update_abstract(self, article_name: str, title: str, content: str) -> int:
         """添加或更新摘要。返回摘要ID。"""
         with self.get_cursor() as cursor:
@@ -192,7 +198,7 @@ class DatabaseManager:
             cursor.execute("SELECT * FROM abstracts ORDER BY article_name")
             return cursor.fetchall()
 
-    # ─── 块操作 ──────────────────────────────────────────
+    # ─── 块操作 ───────────────────────────────
     def add_chunk(self, global_index: int, article_name: str, section: str, content: str) -> int:
         """添加块。返回块ID。如果global_index已存在则更新。"""
         with self.get_cursor() as cursor:
@@ -273,7 +279,7 @@ class DatabaseManager:
             result = cursor.fetchone()
             return result['max_index'] if result else -1
 
-    # ─── 元数据操作 ───────────────────────────────────────
+    # ─── 元数据操作 ──────────────────────────
     def get_meta(self) -> Dict[str, Any]:
         """获取系统元数据。"""
         articles = self.get_all_articles()
@@ -294,7 +300,7 @@ class DatabaseManager:
             ]
         }
 
-    # ─── 数据迁移 ───────────────────────────────────────
+    # ─── 数据迁移 ──────────────────────────
     def migrate_from_json(self, meta_path: str, chunks_dir: str, abstracts_dir: str = None):
         """从JSON文件迁移数据到MySQL数据库。"""
         import os
