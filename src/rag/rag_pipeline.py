@@ -59,7 +59,7 @@ class RAGPipeline:
         self.retriever: Retriever | None = None
         self.agent: AgenticRAG | None = None
 
-    # ═══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════
     @property
     def index_dir(self) -> str:
         return self.config["index"]["index_dir"]
@@ -83,7 +83,7 @@ class RAGPipeline:
     def _bm25_path(self, kind: str) -> str:
         return os.path.join(self.index_dir, f"{kind}_bm25.pkl")
 
-    # ─── meta ──────────────────────────────────────────────
+    # ─── meta ──────────────────────────────────
     def _read_meta(self) -> dict:
         # 优先从数据库读取，如果数据库为空则从文件读取
         meta = self.db_manager.get_meta()
@@ -103,9 +103,9 @@ class RAGPipeline:
             json.dump(meta, f, ensure_ascii=False, indent=2)
         self._meta = meta
 
-    # ═══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════
     #  构建索引
-    # ═══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════
     def build_index(self, pdf_path: str):
         print("=" * 60)
         print(f"构建索引: {pdf_path}")
@@ -237,9 +237,9 @@ class RAGPipeline:
         self.chunk_index.save(self._faiss_dir("chunk"), self._bm25_path("chunk"))
         print(f"索引已保存到 {self.index_dir}/")
 
-    # ═══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════
     #  加载
-    # ═══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════
     def load_index(self):
         meta = self._read_meta()
         if not meta or not meta.get("articles"):
@@ -281,9 +281,9 @@ class RAGPipeline:
             retrieval_cfg=self.config["retrieval"],
         )
 
-    # ═══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════
     #  文章管理
-    # ═══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════
     def list_articles(self) -> list[str]:
         # 优先从数据库读取
         articles = self.db_manager.get_all_articles()
@@ -310,9 +310,30 @@ class RAGPipeline:
         self.save_index()
         print("删除完成")
 
-    # ═══════════════════════════════════════════════════════
+    def delete_all_articles(self):
+        articles = self.list_articles()
+        if not articles:
+            print("暂无已索引的文章")
+            return
+
+        # 从数据库删除全部文章，摘要和块会通过外键级联删除
+        self.db_manager.delete_all_articles()
+
+        # 同时删除本地 JSON 文件
+        for article_name in articles:
+            for old in (self._chunks_file(article_name), self._abstract_file(article_name)):
+                if os.path.exists(old):
+                    os.remove(old)
+
+        meta = {"total_chunks": 0, "total_articles": 0, "articles": []}
+        print(f"已移除全部文章：{len(articles)} 篇，重建空索引...")
+        self._rebuild_all(meta)
+        self.save_index()
+        print("全部删除完成")
+
+    # ══════════════════════════════════════════════════════
     #  问答（委托 Agent）
-    # ═══════════════════════════════════════════════════════
+    # ══════════════════════════════════════════════════════
     def query(self, question: str) -> tuple[str, list[dict]]:
         if self.agent is None:
             self._build_runtime()
