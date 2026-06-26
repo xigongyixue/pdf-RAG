@@ -3,7 +3,8 @@
 用法:
   python main.py index <pdf_path>           # 添加文章到索引
   python main.py list                        # 列出已索引文章
-  python main.py delete <article_name>       # 删除某文章
+  python main.py delete <article_name|index> # 删除某文章（支持文章名或 list 中的数字索引）
+  python main.py delete-all                  # 删除全部文章（二次确认）
   python main.py query "<问题>"              # 跨文章问答
   python main.py interactive                 # 交互式跨文章问答
 """
@@ -31,8 +32,8 @@ def cmd_list(pipeline: RAGPipeline):
         print("暂无已索引的文章")
     else:
         print("已索引文章:")
-        for name in articles:
-            print(f"  - {name}")
+        for i, name in enumerate(articles):
+            print(f"  [{i}] {name}")
 
 
 def cmd_delete(pipeline: RAGPipeline, article_name: str):
@@ -53,11 +54,37 @@ def cmd_delete(pipeline: RAGPipeline, article_name: str):
                 break
             except (ValueError, IndexError):
                 print(f"无效序号，请输入 0-{len(articles)-1}")
+    elif article_name.isdigit():
+        idx = int(article_name)
+        if 0 <= idx < len(articles):
+            article_name = articles[idx]
+        else:
+            print(f"无效序号，请输入 0-{len(articles)-1}")
+            return
     elif article_name not in articles:
-        print(f"文章 '{article_name}' 不在索引列表中。可用文章: {articles}")
+        print("文章不在索引列表中。可用文章:")
+        for i, name in enumerate(articles):
+            print(f"  [{i}] {name}")
         return
 
     pipeline.delete_article(article_name)
+
+
+def cmd_delete_all(pipeline: RAGPipeline):
+    """删除全部文章索引，执行前需要二次确认。"""
+    articles = pipeline.list_articles()
+    if not articles:
+        print("暂无已索引的文章")
+        return
+
+    print(f"即将删除全部 {len(articles)} 篇文章及其摘要、chunk 和索引。")
+    print("此操作不可恢复。")
+    confirm = input("请输入 DELETE ALL 确认删除全部文章: ").strip()
+    if confirm != "DELETE ALL":
+        print("确认文本不匹配，已取消删除。")
+        return
+
+    pipeline.delete_all_articles()
 
 
 def cmd_query(pipeline: RAGPipeline, question: str):
@@ -74,7 +101,7 @@ def cmd_query(pipeline: RAGPipeline, question: str):
 def cmd_interactive(pipeline: RAGPipeline):
     """交互式问答命令。"""
     pipeline.load_index()
-    print("\n交互式问答模式 | 输入 'quit' 退出\n")
+    print("\n交互式问答模式 | 输入 'quit' 退出 | 输入 'clear' 清空追问上下文\n")
 
     while True:
         try:
@@ -82,6 +109,11 @@ def cmd_interactive(pipeline: RAGPipeline):
             if question.lower() in ("quit", "exit", "q"):
                 print("再见！")
                 break
+            if question.lower() in ("clear", "reset"):
+                if pipeline.agent:
+                    pipeline.agent.reset_context()
+                print("已清空追问上下文。")
+                continue
             if not question:
                 continue
 
@@ -137,6 +169,10 @@ def main():
         article_name = sys.argv[2] if len(sys.argv) > 2 else "--select"
         pipeline = RAGPipeline(config)
         cmd_delete(pipeline, article_name)
+
+    elif command == "delete-all":
+        pipeline = RAGPipeline(config)
+        cmd_delete_all(pipeline)
 
     elif command == "query":
         if len(sys.argv) < 3:
