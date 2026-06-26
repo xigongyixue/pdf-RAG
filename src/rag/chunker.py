@@ -41,11 +41,18 @@ def split_text(
     # 动态合并和切分
     final_chunks = _dynamic_chunking(all_chunks, min_chunk_size, max_chunk_size, overlap_ratio)
 
-    # 重新编号
+    # 重新编号，并删除所有换行符
     for i, chunk in enumerate(final_chunks):
+        chunk["section"] = _remove_newlines(chunk.get("section", ""))
+        chunk["content"] = _remove_newlines(chunk.get("content", ""))
         chunk["index"] = i
 
     return final_chunks
+
+
+def _remove_newlines(text: str) -> str:
+    """删除文本中的所有换行符，并压缩多余空白。"""
+    return re.sub(r"\s+", " ", text.replace("\r", " ").replace("\n", " ")).strip()
 
 
 def _dynamic_chunking(

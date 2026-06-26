@@ -25,7 +25,35 @@ class Retriever:
         self.db_manager = db_manager
         self._chunk_cache: dict[str, list[dict]] = {}
 
-    # ─── 文章级检索 ────────────────────────────────────────
+    # ─── 文章级检索 ──────────────────────────────
+    def search_article_summaries(
+        self,
+        query: str,
+        top_k: int = 3,
+        embedding_top_k: int = 10,
+        bm25_top_k: int = 10,
+    ) -> list[dict]:
+        """根据 query 在 abstract 索引中检索，返回文章摘要信息。"""
+        results = self.abstract_index.search(
+            query,
+            embedding_top_k=embedding_top_k,
+            bm25_top_k=bm25_top_k,
+            final_top_k=top_k,
+        )
+        articles = self.meta.get("articles", [])
+        summaries = []
+        for idx, score in results:
+            if 0 <= idx < len(articles):
+                art = articles[idx]
+                summary = self._get_abstract(art)
+                summaries.append({
+                    "article": art["name"],
+                    "score": score,
+                    "title": summary.get("title", ""),
+                    "content": summary.get("content", ""),
+                })
+        return summaries
+
     def search_articles(
         self,
         query: str,
@@ -34,20 +62,17 @@ class Retriever:
         bm25_top_k: int = 10,
     ) -> list[str]:
         """根据 query 在 abstract 索引中检索，返回文章名列表。"""
-        results = self.abstract_index.search(
-            query,
-            embedding_top_k=embedding_top_k,
-            bm25_top_k=bm25_top_k,
-            final_top_k=top_k,
-        )
-        articles = self.meta.get("articles", [])
-        result = []
-        for idx, _ in results:
-            if 0 <= idx < len(articles):
-                result.append(articles[idx]["name"])
-        return result
+        return [
+            summary["article"]
+            for summary in self.search_article_summaries(
+                query,
+                top_k=top_k,
+                embedding_top_k=embedding_top_k,
+                bm25_top_k=bm25_top_k,
+            )
+        ]
 
-    # ─── 正文 chunk 检索 ──────────────────────────────────
+    # ─── 正文 chunk 检索 ─────────────────────────
     def search_chunks(
         self,
         query: str,
@@ -127,7 +152,7 @@ class Retriever:
 
         return final_results[:top_k]
 
-    # ─── chunk 按需加载 ───────────────────────────────────
+    # ─── chunk 按需加载 ────────────────────────
     def get_chunk(self, global_idx: int) -> dict | None:
         """优先从数据库加载块，回退到文件加载。"""
         # 1. 优先尝试从数据库加载
@@ -139,6 +164,23 @@ class Retriever:
         # 2. 回退到文件加载
         return self._get_chunk_from_file(global_idx)
     
+    def _get_abstract(self, art: dict) -> dict:
+        """优先从数据库加载摘要，回退到文件加载。"""
+        if self.db_manager:
+            try:
+                abstract = self.db_manager.get_abstract(art["name"])
+                if abstract:
+                    return {
+                        "title": abstract.get("title", ""),
+                        "content": abstract.get("content", ""),
+                    }
+            except Exception as e:
+                print(f"从数据库加载摘要失败: {e}")
+
+        fpath = os.path.join(self.chunks_dir, art["abstract_file"])
+        with open(fpath, "r", encoding="utf-8") as f:
+            return json.load(f)
+
     def _get_chunk_from_db(self, global_idx: int) -> dict | None:
         """从数据库加载块。"""
         try:
