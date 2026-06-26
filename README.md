@@ -101,15 +101,6 @@ python main.py delete "document_name.pdf"
 python main.py clear
 ```
 
-### 6. 运行测试
-
-```bash
-python test.py
-
-# 对单个文件进行分块测试
-python test.py /path/to/document.pdf
-```
-
 ## MCP 服务模式
 
 ### 启动 MCP 服务
@@ -141,32 +132,6 @@ result = client.call_tool("pdf_rag_index", {"pdf_path": "/path/to/document.pdf"}
 result = client.call_tool("pdf_rag_query", {"question": "文档的主要结论是什么？"})
 ```
 
-## 项目结构
-
-```
-pdf-RAG/
-├── config.yaml          # 配置文件
-├── main.py              # 入口脚本
-├── test.py              # 测试脚本
-├── mcp_server.py        # MCP 服务端
-├── mcp_config.json      # MCP 配置
-├── requirements.txt     # Python 依赖
-├── run.sh               # 使用说明脚本
-├── index/               # FAISS 索引目录
-├── chunks/              # 分块存储目录
-│   ├── document1.json   # 文档分块文件
-│   ├── document2.json   # 文档分块文件
-│   └── meta.json        # 元信息管理
-└── src/
-    ├── pdf_parser.py    # PDF 文本提取
-    ├── chunker.py       # 文本分块（按章节）
-    ├── embedding.py     # 向量嵌入
-    ├── vector_store.py  # FAISS 向量存储
-    ├── bm25_index.py    # BM25 标量索引
-    ├── translator.py    # 查询翻译
-    ├── hybrid_search.py # 混合检索 + RRF 融合
-    └── rag_pipeline.py  # RAG 主流程编排
-```
 
 ## 核心特性
 
